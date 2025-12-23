@@ -11,10 +11,8 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAngularDev", policy =>
     {
-        policy.WithOrigins(
-            "http://localhost:4200",
-            "https://your-angular-domain-if-any.com"
-        )
+        policy
+        .AllowAnyOrigin()
         .AllowAnyHeader()
         .AllowAnyMethod();
     });
@@ -25,34 +23,33 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 // ------------------ DATABASE CONFIG ------------------
-// USE SQLITE (Works on Render Linux)
 builder.Services.AddDbContext<DataContext>(options =>
-    options.UseSqlite(
-        builder.Configuration.GetConnectionString("DefaultConnection")
-    )
+    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"))
 );
 
-// ------------------ BUILD APP ------------------
 var app = builder.Build();
 
-// Swagger only in dev OR enable always if you want
-if (app.Environment.IsDevelopment())
+
+// ------------------ APPLY DB MIGRATIONS AUTOMATICALLY ------------------
+using (var scope = app.Services.CreateScope())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    var db = scope.ServiceProvider.GetRequiredService<DataContext>();
+    db.Database.Migrate();
 }
 
-// HTTPS redirect (Render supports it)
-app.UseHttpsRedirection();
 
+// ------------------ PIPELINE ------------------
+
+// Enable Swagger ALWAYS (Render = Production)
+app.UseSwagger();
+app.UseSwaggerUI();
+
+// NO HTTPS REDIRECT IN RENDER (it causes issues sometimes)
 app.UseCors("AllowAngularDev");
-
 app.UseAuthorization();
 
 app.MapControllers();
 
-// Health check root
 app.MapGet("/", () => "API is running 🚀");
 
-// Run app
 app.Run();
