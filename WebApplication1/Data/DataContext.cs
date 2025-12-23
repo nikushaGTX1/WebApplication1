@@ -27,18 +27,19 @@ namespace WebApplication1.Data
             builder.Entity<User>().HasKey(x => x.Id);
             builder.Entity<WishlistItem>().HasKey(x => x.Id);
 
-            // Relationships
+            // Wishlist → User
             builder.Entity<WishlistItem>()
-                   .HasOne(w => w.User)
-                   .WithMany()
-                   .HasForeignKey(w => w.UserId)
-                   .OnDelete(DeleteBehavior.Cascade);
+                .HasOne(w => w.User)
+                .WithMany()
+                .HasForeignKey(w => w.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
 
+            // Wishlist → Medicine
             builder.Entity<WishlistItem>()
-                   .HasOne(w => w.Api)
-                   .WithMany()
-                   .HasForeignKey(w => w.MedicineId)
-                   .OnDelete(DeleteBehavior.Cascade);
+                .HasOne(w => w.Api)
+                .WithMany()
+                .HasForeignKey(w => w.MedicineId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

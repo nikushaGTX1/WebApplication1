@@ -20,13 +20,14 @@ namespace WebApplication1.Controllers
 
         // ------------------ PRODUCTS ------------------
 
-        [HttpGet("get-medicines")]
-        public async Task<ActionResult<List<Api>>> GetMedicines()
+        [HttpGet("get-creams")]
+        public async Task<ActionResult<List<Api>>> GetCreams()
         {
             var medicines = await _context.Medicines
-                                          .AsNoTracking()
-                                          .Where(m => m.Category == "Medicines")
-                                          .ToListAsync();
+                .AsNoTracking()
+                .Where(m => m.Category == "Creams")
+                .ToListAsync();
+
             return Ok(medicines);
         }
 
@@ -34,9 +35,10 @@ namespace WebApplication1.Controllers
         public async Task<ActionResult<List<Api>>> GetVitamins()
         {
             var vitamins = await _context.Medicines
-                                         .AsNoTracking()
-                                         .Where(m => m.Category == "Vitamins")
-                                         .ToListAsync();
+                .AsNoTracking()
+                .Where(m => m.Category == "Vitamins")
+                .ToListAsync();
+
             return Ok(vitamins);
         }
 
@@ -44,9 +46,10 @@ namespace WebApplication1.Controllers
         public async Task<ActionResult<List<Api>>> GetSkincare()
         {
             var skincare = await _context.Medicines
-                                         .AsNoTracking()
-                                         .Where(m => m.Category == "Skincare")
-                                         .ToListAsync();
+                .AsNoTracking()
+                .Where(m => m.Category == "Skincare")
+                .ToListAsync();
+
             return Ok(skincare);
         }
 
@@ -59,7 +62,7 @@ namespace WebApplication1.Controllers
                 Price = req.Price,
                 Image = req.Image,
                 Description = req.Description,
-                Category = req.Category,
+                Category = req.Category
             };
 
             await _context.Medicines.AddAsync(product);
@@ -116,27 +119,18 @@ namespace WebApplication1.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> LoginUser(LoginDto req)
         {
-            // Basic validation
             if (string.IsNullOrEmpty(req.Email) || string.IsNullOrEmpty(req.Password))
-            {
                 return BadRequest("Email and password are required.");
-            }
 
-            // Find user by email
-            var user = await _context.Users
-                .FirstOrDefaultAsync(u => u.Email == req.Email);
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == req.Email);
+            if (user == null) return BadRequest("Invalid email or password.");
 
-            if (user == null)
-                return BadRequest("Invalid email or password.");
-
-            // Verify password
             var passwordHasher = new PasswordHasher<User>();
             var result = passwordHasher.VerifyHashedPassword(user, user.PasswordHash, req.Password);
 
             if (result != PasswordVerificationResult.Success)
                 return BadRequest("Invalid email or password.");
 
-            // Return basic user info (no roles)
             return Ok(new
             {
                 message = "Login successful",
@@ -147,6 +141,7 @@ namespace WebApplication1.Controllers
                 }
             });
         }
+
         [HttpPost("register")]
         public async Task<IActionResult> RegisterUser(LoginDto req)
         {
@@ -154,11 +149,11 @@ namespace WebApplication1.Controllers
                 return BadRequest("Email already exists");
 
             var passwordHasher = new PasswordHasher<User>();
+
             var user = new User
             {
                 Email = req.Email,
                 PasswordHash = passwordHasher.HashPassword(null, req.Password)
-                // No admin role here
             };
 
             _context.Users.Add(user);
@@ -167,24 +162,22 @@ namespace WebApplication1.Controllers
             return Ok(new { message = "User registered successfully", userId = user.Id });
         }
 
-        // ------------------ USERS ------------------
+        // ------------------ WISHLIST ------------------
 
         [HttpGet("wishlist/{userId}")]
         public async Task<ActionResult<List<WishlistItem>>> GetWishlist(string userId)
         {
             var wishlist = await _context.WishList
-                .Include(w => w.Api) // Include product details
+                .Include(w => w.Api)
                 .Where(w => w.UserId == userId)
                 .ToListAsync();
 
             return Ok(wishlist);
         }
 
-        // POST: api/api/wishlist
         [HttpPost("wishlist")]
         public async Task<IActionResult> AddToWishlist([FromBody] WishlistItem item)
         {
-            // Optional: prevent duplicates
             var exists = await _context.WishList
                 .AnyAsync(w => w.UserId == item.UserId && w.MedicineId == item.MedicineId);
 
@@ -196,7 +189,6 @@ namespace WebApplication1.Controllers
             return Ok(item);
         }
 
-        // DELETE: api/api/wishlist/{id}
         [HttpDelete("wishlist/{id}")]
         public async Task<IActionResult> RemoveFromWishlist(string id)
         {
