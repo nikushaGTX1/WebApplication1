@@ -3,38 +3,46 @@ using WebApplication1.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// ------------------ SERVICES ------------------
 builder.Services.AddControllers();
 
-// ✅ Add CORS policy
+// CORS
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAngularDev",
-        policy =>
-        {
-            policy.WithOrigins("http://localhost:4200") // Angular dev URL
-                  .AllowAnyHeader()
-                  .AllowAnyMethod();
-        });
+    options.AddPolicy("AllowAngularDev", policy =>
+    {
+        policy.WithOrigins(
+            "http://localhost:4200",
+            "https://your-angular-domain-if-any.com"
+        )
+        .AllowAnyHeader()
+        .AllowAnyMethod();
+    });
 });
 
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+// Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// ------------------ DATABASE CONFIG ------------------
+// USE SQLITE (Works on Render Linux)
+builder.Services.AddDbContext<DataContext>(options =>
+    options.UseSqlite(
+        builder.Configuration.GetConnectionString("DefaultConnection")
+    )
+);
 
-builder.Services.AddDbContext<DataContext>(options => options.UseSqlServer(@"Data Source=(localdb)\MSSQLLocalDB;Initial Catalog=master;Integrated Security=True;Connect Timeout=30;Encrypt=False;Trust Server Certificate=False;Application Intent=ReadWrite;Multi Subnet Failover=False"));
-
-
+// ------------------ BUILD APP ------------------
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// Swagger only in dev OR enable always if you want
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
+// HTTPS redirect (Render supports it)
 app.UseHttpsRedirection();
 
 app.UseCors("AllowAngularDev");
@@ -43,4 +51,8 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+// Health check root
+app.MapGet("/", () => "API is running 🚀");
+
+// Run app
 app.Run();
