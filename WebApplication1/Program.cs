@@ -12,9 +12,9 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowAngularDev", policy =>
     {
         policy
-        .AllowAnyOrigin()
-        .AllowAnyHeader()
-        .AllowAnyMethod();
+            .AllowAnyOrigin()
+            .AllowAnyHeader()
+            .AllowAnyMethod();
     });
 });
 
@@ -44,8 +44,11 @@ using (var scope = app.Services.CreateScope())
 app.UseSwagger();
 app.UseSwaggerUI();
 
-// NO HTTPS REDIRECT IN RENDER (it causes issues sometimes)
+// Serve static files (VERY IMPORTANT for uploads)
+app.UseStaticFiles();
+
 app.UseCors("AllowAngularDev");
+
 app.UseAuthorization();
 
 app.MapControllers();

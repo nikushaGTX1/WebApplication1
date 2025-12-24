@@ -12,10 +12,12 @@ namespace WebApplication1.Controllers
     public class ApiController : ControllerBase
     {
         private readonly DataContext _context;
+        private readonly IWebHostEnvironment _env;
 
-        public ApiController(DataContext context)
+        public ApiController(DataContext context, IWebHostEnvironment env)
         {
             _context = context;
+            _env = env;
         }
 
         // ------------------ PRODUCTS ------------------
@@ -199,6 +201,64 @@ namespace WebApplication1.Controllers
             await _context.SaveChangesAsync();
 
             return Ok("Removed successfully");
+        }
+
+        // ------------------ BANNER SETTINGS ------------------
+
+        [HttpPost("upload-banner")]
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> UploadBanner(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest("No file uploaded");
+
+            string uploadPath = Path.Combine(_env.WebRootPath, "uploads");
+
+            if (!Directory.Exists(uploadPath))
+                Directory.CreateDirectory(uploadPath);
+
+            string fileName = $"banner-{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
+            string fullPath = Path.Combine(uploadPath, fileName);
+
+            using (var stream = new FileStream(fullPath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            string url = $"{Request.Scheme}://{Request.Host}/uploads/{fileName}";
+
+            var banner = await _context.Settings.FirstOrDefaultAsync(x => x.Key == "MainBanner");
+
+            if (banner == null)
+            {
+                banner = new Setting
+                {
+                    Key = "MainBanner",
+                    Value = url
+                };
+                _context.Settings.Add(banner);
+            }
+            else
+            {
+                banner.Value = url;
+            }
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { bannerUrl = url });
+        }
+
+        [HttpGet("banner")]
+        public async Task<IActionResult> GetBanner()
+        {
+            var banner = await _context.Settings
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Key == "MainBanner");
+
+            return Ok(new
+            {
+                bannerUrl = banner?.Value
+            });
         }
     }
 }
