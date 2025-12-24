@@ -4,6 +4,10 @@ using Microsoft.EntityFrameworkCore;
 using WebApplication1.Data;
 using WebApplication1.DTOs;
 using WebApplication1.Models;
+using System.IO;
+using System;
+using System.Linq;
+using Microsoft.AspNetCore.Http;
 
 namespace WebApplication1.Controllers
 {
@@ -96,6 +100,7 @@ namespace WebApplication1.Controllers
 
             _context.Medicines.Remove(product);
             await _context.SaveChangesAsync();
+
             return Ok("Deleted successfully");
         }
 
@@ -203,7 +208,7 @@ namespace WebApplication1.Controllers
             return Ok("Removed successfully");
         }
 
-        // ------------------ BANNER SETTINGS ------------------
+        // ------------------ BANNER ------------------
 
         [HttpPost("upload-banner")]
         [Consumes("multipart/form-data")]
@@ -212,12 +217,9 @@ namespace WebApplication1.Controllers
             if (file == null || file.Length == 0)
                 return BadRequest("No file uploaded");
 
-            // Ensure root exists in Render
             var root = _env.WebRootPath;
             if (string.IsNullOrEmpty(root))
-            {
                 root = Path.Combine(_env.ContentRootPath, "wwwroot");
-            }
 
             if (!Directory.Exists(root))
                 Directory.CreateDirectory(root);
@@ -232,7 +234,6 @@ namespace WebApplication1.Controllers
             using var stream = new FileStream(fullPath, FileMode.Create);
             await file.CopyToAsync(stream);
 
-            // Public URL
             string url = $"{Request.Scheme}://{Request.Host}/uploads/{fileName}";
 
             var banner = await _context.Settings.FirstOrDefaultAsync(x => x.Key == "MainBanner");
@@ -254,10 +255,67 @@ namespace WebApplication1.Controllers
                 .AsNoTracking()
                 .FirstOrDefaultAsync(x => x.Key == "MainBanner");
 
+            return Ok(new { bannerUrl = banner?.Value });
+        }
+
+        // ------------------ GRID ------------------
+
+        [HttpGet("grid")]
+        public async Task<IActionResult> GetGrid()
+        {
+            var items = await _context.Settings
+                .Where(x => x.Key.StartsWith("Grid"))
+                .ToListAsync();
+
             return Ok(new
             {
-                bannerUrl = banner?.Value
+                grid1 = items.FirstOrDefault(x => x.Key == "Grid1")?.Value,
+                grid2 = items.FirstOrDefault(x => x.Key == "Grid2")?.Value,
+                grid3 = items.FirstOrDefault(x => x.Key == "Grid3")?.Value,
+                grid4 = items.FirstOrDefault(x => x.Key == "Grid4")?.Value
             });
+        }
+
+        [HttpPost("upload-grid/{slot}")]
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> UploadGrid(int slot, IFormFile file)
+        {
+            if (slot < 1 || slot > 4)
+                return BadRequest("Slot must be 1–4");
+
+            if (file == null || file.Length == 0)
+                return BadRequest("No file uploaded");
+
+            var root = _env.WebRootPath;
+            if (string.IsNullOrEmpty(root))
+                root = Path.Combine(_env.ContentRootPath, "wwwroot");
+
+            if (!Directory.Exists(root))
+                Directory.CreateDirectory(root);
+
+            var uploadPath = Path.Combine(root, "uploads");
+            if (!Directory.Exists(uploadPath))
+                Directory.CreateDirectory(uploadPath);
+
+            string fileName = $"grid-{slot}-{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
+            string fullPath = Path.Combine(uploadPath, fileName);
+
+            using var stream = new FileStream(fullPath, FileMode.Create);
+            await file.CopyToAsync(stream);
+
+            string url = $"{Request.Scheme}://{Request.Host}/uploads/{fileName}";
+
+            var key = $"Grid{slot}";
+            var setting = await _context.Settings.FirstOrDefaultAsync(x => x.Key == key);
+
+            if (setting == null)
+                _context.Settings.Add(new Setting { Key = key, Value = url });
+            else
+                setting.Value = url;
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { slot, url });
         }
     }
 }
