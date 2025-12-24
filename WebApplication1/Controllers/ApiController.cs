@@ -212,36 +212,35 @@ namespace WebApplication1.Controllers
             if (file == null || file.Length == 0)
                 return BadRequest("No file uploaded");
 
-            string uploadPath = Path.Combine(_env.WebRootPath, "uploads");
+            // Ensure root exists in Render
+            var root = _env.WebRootPath;
+            if (string.IsNullOrEmpty(root))
+            {
+                root = Path.Combine(_env.ContentRootPath, "wwwroot");
+            }
 
+            if (!Directory.Exists(root))
+                Directory.CreateDirectory(root);
+
+            var uploadPath = Path.Combine(root, "uploads");
             if (!Directory.Exists(uploadPath))
                 Directory.CreateDirectory(uploadPath);
 
             string fileName = $"banner-{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
             string fullPath = Path.Combine(uploadPath, fileName);
 
-            using (var stream = new FileStream(fullPath, FileMode.Create))
-            {
-                await file.CopyToAsync(stream);
-            }
+            using var stream = new FileStream(fullPath, FileMode.Create);
+            await file.CopyToAsync(stream);
 
+            // Public URL
             string url = $"{Request.Scheme}://{Request.Host}/uploads/{fileName}";
 
             var banner = await _context.Settings.FirstOrDefaultAsync(x => x.Key == "MainBanner");
 
             if (banner == null)
-            {
-                banner = new Setting
-                {
-                    Key = "MainBanner",
-                    Value = url
-                };
-                _context.Settings.Add(banner);
-            }
+                _context.Settings.Add(new Setting { Key = "MainBanner", Value = url });
             else
-            {
                 banner.Value = url;
-            }
 
             await _context.SaveChangesAsync();
 
