@@ -169,45 +169,6 @@ namespace WebApplication1.Controllers
             return Ok(new { message = "User registered successfully", userId = user.Id });
         }
 
-        // ------------------ WISHLIST ------------------
-
-        [HttpGet("wishlist/{userId}")]
-        public async Task<ActionResult<List<WishlistItem>>> GetWishlist(string userId)
-        {
-            var wishlist = await _context.WishList
-                .Include(w => w.Api)
-                .Where(w => w.UserId == userId)
-                .ToListAsync();
-
-            return Ok(wishlist);
-        }
-
-        [HttpPost("wishlist")]
-        public async Task<IActionResult> AddToWishlist([FromBody] WishlistItem item)
-        {
-            var exists = await _context.WishList
-                .AnyAsync(w => w.UserId == item.UserId && w.MedicineId == item.MedicineId);
-
-            if (exists) return BadRequest("Item already in wishlist");
-
-            _context.WishList.Add(item);
-            await _context.SaveChangesAsync();
-
-            return Ok(item);
-        }
-
-        [HttpDelete("wishlist/{id}")]
-        public async Task<IActionResult> RemoveFromWishlist(string id)
-        {
-            var item = await _context.WishList.FindAsync(id);
-            if (item == null) return NotFound("Wishlist item not found!");
-
-            _context.WishList.Remove(item);
-            await _context.SaveChangesAsync();
-
-            return Ok("Removed successfully");
-        }
-
         // ------------------ BANNER ------------------
 
         [HttpPost("upload-banner")]
@@ -318,18 +279,42 @@ namespace WebApplication1.Controllers
             return Ok(new { slot, url });
         }
 
-        // ------------------ ABOUT TEXTS ------------------
+        // ------------------ ABOUT TEXTS (FIXED) ------------------
 
         [HttpGet("about-texts")]
         public async Task<IActionResult> GetAboutTexts()
         {
-            var items = await _context.Settings
-                .Where(x => x.Key.StartsWith("About_"))
-                .ToListAsync();
+            try
+            {
+                var items = await _context.Settings
+                    .Where(x => EF.Functions.Like(x.Key, "About_%"))
+                    .ToListAsync();
 
-            var dict = items.ToDictionary(x => x.Key, x => x.Value);
+                var dict = items.ToDictionary(x => x.Key, x => x.Value ?? "");
 
-            return Ok(dict);
+                string[] keys =
+                {
+                    "About_HeroTitle",
+                    "About_HeroText",
+                    "About_Who",
+                    "About_WhoText",
+                    "About_Philosophy",
+                    "About_PhilosophyText",
+                    "About_Mission",
+                    "About_MissionText",
+                    "About_Trust",
+                    "About_ExploreBtn"
+                };
+
+                foreach (var k in keys)
+                    if (!dict.ContainsKey(k)) dict[k] = "";
+
+                return Ok(dict);
+            }
+            catch (Exception)
+            {
+                return Ok(new { });
+            }
         }
 
         [HttpPost("about-texts")]
@@ -340,27 +325,16 @@ namespace WebApplication1.Controllers
 
             foreach (var kv in texts)
             {
-                var key = kv.Key;
-                var value = kv.Value ?? string.Empty;
-
-                var setting = await _context.Settings
-                    .FirstOrDefaultAsync(x => x.Key == key);
+                var setting = await _context.Settings.FirstOrDefaultAsync(x => x.Key == kv.Key);
 
                 if (setting == null)
-                {
-                    _context.Settings.Add(new Setting
-                    {
-                        Key = key,
-                        Value = value
-                    });
-                }
+                    _context.Settings.Add(new Setting { Key = kv.Key, Value = kv.Value ?? "" });
                 else
-                {
-                    setting.Value = value;
-                }
+                    setting.Value = kv.Value ?? "";
             }
 
             await _context.SaveChangesAsync();
+
             return Ok(new { message = "About texts updated" });
         }
     }
