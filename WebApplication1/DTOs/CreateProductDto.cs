@@ -7,5 +7,7 @@
         public string Image { get; set; }
         public double Price { get; set; }
         public string Category { get; set; }
+
+        public IFormFile ImageFile { get; set; }
     }
 }

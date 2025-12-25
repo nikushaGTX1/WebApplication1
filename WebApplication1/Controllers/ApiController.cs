@@ -60,14 +60,41 @@ namespace WebApplication1.Controllers
             return Ok(skincare);
         }
 
+
+        // ------------ ADD PRODUCT + IMAGE UPLOAD -----------------
+
         [HttpPost("add-product")]
-        public async Task<IActionResult> CreateProduct(CreateProductDto req)
+        [Consumes("multipart/form-data")]
+        public async Task<IActionResult> CreateProduct([FromForm] CreateProductDto req)
         {
+            if (req == null)
+                return BadRequest("Invalid request");
+
+            string imageUrl = req.Image;
+
+            // Upload Image If Provided
+            if (req.ImageFile != null && req.ImageFile.Length > 0)
+            {
+                var root = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
+                Directory.CreateDirectory(root);
+
+                var uploadPath = Path.Combine(root, "uploads");
+                Directory.CreateDirectory(uploadPath);
+
+                string fileName = $"product-{Guid.NewGuid()}{Path.GetExtension(req.ImageFile.FileName)}";
+                string fullPath = Path.Combine(uploadPath, fileName);
+
+                using var stream = new FileStream(fullPath, FileMode.Create);
+                await req.ImageFile.CopyToAsync(stream);
+
+                imageUrl = $"{Request.Scheme}://{Request.Host}/uploads/{fileName}";
+            }
+
             var product = new Api
             {
                 Name = req.Name,
                 Price = req.Price,
-                Image = req.Image,
+                Image = imageUrl,
                 Description = req.Description,
                 Category = req.Category
             };
@@ -77,6 +104,7 @@ namespace WebApplication1.Controllers
 
             return Ok(product);
         }
+
 
         [HttpPut("edit-product/{id}")]
         public async Task<IActionResult> EditProduct(string id, EditProductDto req)
@@ -223,7 +251,7 @@ namespace WebApplication1.Controllers
 
 
 
-        // -------------------------------- GRID (SAFE, 7 SLOTS, NO CRASH) --------------------------------
+        // -------------------------------- GRID --------------------------------
 
         [HttpGet("grid")]
         public async Task<IActionResult> GetGrid()
