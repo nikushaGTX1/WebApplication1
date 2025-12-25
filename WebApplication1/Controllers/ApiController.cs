@@ -24,7 +24,8 @@ namespace WebApplication1.Controllers
             _env = env;
         }
 
-        // ------------------ PRODUCTS ------------------
+
+        // -------------------------------- PRODUCTS --------------------------------
 
         [HttpGet("get-creams")]
         public async Task<ActionResult<List<Api>>> GetCreams()
@@ -104,7 +105,9 @@ namespace WebApplication1.Controllers
             return Ok("Deleted successfully");
         }
 
-        // ------------------ AUTH ------------------
+
+
+        // -------------------------------- AUTH --------------------------------
 
         [HttpPost("create-admin")]
         public async Task<IActionResult> CreateAdmin(LoginDto req)
@@ -122,6 +125,7 @@ namespace WebApplication1.Controllers
 
             return Ok(new { message = "Admin created" });
         }
+
 
         [HttpPost("login")]
         public async Task<IActionResult> LoginUser(LoginDto req)
@@ -149,6 +153,7 @@ namespace WebApplication1.Controllers
             });
         }
 
+
         [HttpPost("register")]
         public async Task<IActionResult> RegisterUser(LoginDto req)
         {
@@ -169,7 +174,9 @@ namespace WebApplication1.Controllers
             return Ok(new { message = "User registered successfully", userId = user.Id });
         }
 
-        // ------------------ BANNER ------------------
+
+
+        // -------------------------------- BANNER --------------------------------
 
         [HttpPost("upload-banner")]
         [Consumes("multipart/form-data")]
@@ -178,10 +185,7 @@ namespace WebApplication1.Controllers
             if (file == null || file.Length == 0)
                 return BadRequest("No file uploaded");
 
-            var root = _env.WebRootPath;
-            if (string.IsNullOrEmpty(root))
-                root = Path.Combine(_env.ContentRootPath, "wwwroot");
-
+            var root = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
             Directory.CreateDirectory(root);
 
             var uploadPath = Path.Combine(root, "uploads");
@@ -196,7 +200,6 @@ namespace WebApplication1.Controllers
             string url = $"{Request.Scheme}://{Request.Host}/uploads/{fileName}";
 
             var banner = await _context.Settings.FirstOrDefaultAsync(x => x.Key == "MainBanner");
-
             if (banner == null)
                 _context.Settings.Add(new Setting { Key = "MainBanner", Value = url });
             else
@@ -206,6 +209,7 @@ namespace WebApplication1.Controllers
 
             return Ok(new { bannerUrl = url });
         }
+
 
         [HttpGet("banner")]
         public async Task<IActionResult> GetBanner()
@@ -217,29 +221,43 @@ namespace WebApplication1.Controllers
             return Ok(new { bannerUrl = banner?.Value });
         }
 
-        // ------------------ GRID (7 ONLY) ------------------
+
+
+        // -------------------------------- GRID (SAFE, 7 SLOTS, NO CRASH) --------------------------------
 
         [HttpGet("grid")]
         public async Task<IActionResult> GetGrid()
         {
-            var grids = await _context.Settings
-                .Where(x => x.Key.StartsWith("Grid"))
-                .ToListAsync();
-
-            string Get(string key) =>
-                grids.FirstOrDefault(x => x.Key == key)?.Value ?? "";
-
-            return Ok(new
+            try
             {
-                grid1 = Get("Grid1"),
-                grid2 = Get("Grid2"),
-                grid3 = Get("Grid3"),
-                grid4 = Get("Grid4"),
-                grid5 = Get("Grid5"),
-                grid6 = Get("Grid6"),
-                grid7 = Get("Grid7")
-            });
+                var grids = await _context.Settings
+                    .Where(x => x.Key.StartsWith("Grid"))
+                    .ToListAsync();
+
+                string Get(string key) =>
+                    grids.FirstOrDefault(x => x.Key == key)?.Value ?? "";
+
+                return Ok(new
+                {
+                    grid1 = Get("Grid1"),
+                    grid2 = Get("Grid2"),
+                    grid3 = Get("Grid3"),
+                    grid4 = Get("Grid4"),
+                    grid5 = Get("Grid5"),
+                    grid6 = Get("Grid6"),
+                    grid7 = Get("Grid7")
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    message = "Grid load failed",
+                    error = ex.Message
+                });
+            }
         }
+
 
         [HttpPost("upload-grid/{slot}")]
         [Consumes("multipart/form-data")]
@@ -251,10 +269,7 @@ namespace WebApplication1.Controllers
             if (file == null || file.Length == 0)
                 return BadRequest("No file uploaded");
 
-            var root = _env.WebRootPath;
-            if (string.IsNullOrEmpty(root))
-                root = Path.Combine(_env.ContentRootPath, "wwwroot");
-
+            var root = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
             Directory.CreateDirectory(root);
 
             var uploadPath = Path.Combine(root, "uploads");
@@ -267,8 +282,8 @@ namespace WebApplication1.Controllers
             await file.CopyToAsync(stream);
 
             string url = $"{Request.Scheme}://{Request.Host}/uploads/{fileName}";
-
             var key = $"Grid{slot}";
+
             var setting = await _context.Settings.FirstOrDefaultAsync(x => x.Key == key);
 
             if (setting == null)
@@ -280,6 +295,7 @@ namespace WebApplication1.Controllers
 
             return Ok(new { slot, url });
         }
+
 
         [HttpDelete("grid/{slot}")]
         public async Task<IActionResult> DeleteGrid(int slot)
@@ -296,7 +312,9 @@ namespace WebApplication1.Controllers
             return Ok(new { message = $"Grid {slot} deleted" });
         }
 
-        // ------------------ ABOUT TEXTS ------------------
+
+
+        // -------------------------------- ABOUT TEXTS --------------------------------
 
         [HttpGet("about-texts")]
         public async Task<IActionResult> GetAboutTexts()
@@ -333,6 +351,7 @@ namespace WebApplication1.Controllers
                 return Ok(new { });
             }
         }
+
 
         [HttpPost("about-texts")]
         public async Task<IActionResult> UpdateAboutTexts([FromBody] Dictionary<string, string> texts)
