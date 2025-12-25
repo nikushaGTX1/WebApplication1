@@ -219,31 +219,28 @@ namespace WebApplication1.Controllers
             return Ok(new { bannerUrl = banner?.Value });
         }
 
-        // ------------------ GRID ------------------
+        // ------------------ GRID (UNLIMITED + DELETE) ------------------
 
         [HttpGet("grid")]
         public async Task<IActionResult> GetGrid()
         {
-            var items = await _context.Settings
+            var grids = await _context.Settings
                 .Where(x => x.Key.StartsWith("Grid"))
+                .OrderBy(x => x.Key)
                 .ToListAsync();
 
-            return Ok(new
-            {
-                grid1 = items.FirstOrDefault(x => x.Key == "Grid1")?.Value,
-                grid2 = items.FirstOrDefault(x => x.Key == "Grid2")?.Value,
-                grid3 = items.FirstOrDefault(x => x.Key == "Grid3")?.Value,
-                grid4 = items.FirstOrDefault(x => x.Key == "Grid4")?.Value
-            });
+            var result = grids.ToDictionary(
+                x => x.Key.ToLower(),
+                x => x.Value
+            );
+
+            return Ok(result);
         }
 
         [HttpPost("upload-grid/{slot}")]
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> UploadGrid(int slot, IFormFile file)
         {
-            if (slot < 1 || slot > 4)
-                return BadRequest("Slot must be 1–4");
-
             if (file == null || file.Length == 0)
                 return BadRequest("No file uploaded");
 
@@ -279,7 +276,22 @@ namespace WebApplication1.Controllers
             return Ok(new { slot, url });
         }
 
-        // ------------------ ABOUT TEXTS (FIXED) ------------------
+        [HttpDelete("grid/{slot}")]
+        public async Task<IActionResult> DeleteGrid(int slot)
+        {
+            var key = $"Grid{slot}";
+            var setting = await _context.Settings.FirstOrDefaultAsync(x => x.Key == key);
+
+            if (setting == null)
+                return NotFound("Grid not found");
+
+            _context.Settings.Remove(setting);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = $"Grid {slot} deleted" });
+        }
+
+        // ------------------ ABOUT TEXTS ------------------
 
         [HttpGet("about-texts")]
         public async Task<IActionResult> GetAboutTexts()
@@ -311,7 +323,7 @@ namespace WebApplication1.Controllers
 
                 return Ok(dict);
             }
-            catch (Exception)
+            catch
             {
                 return Ok(new { });
             }
