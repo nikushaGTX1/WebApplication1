@@ -13,6 +13,7 @@ namespace WebApplication1.Data
         public DbSet<User> Users { get; set; } = null!;
         public DbSet<WishlistItem> WishList { get; set; } = null!;
         public DbSet<Setting> Settings { get; set; } = null!;
+        public DbSet<StoredFile> Files { get; set; } = null!;   // <-- NEW
 
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -22,6 +23,7 @@ namespace WebApplication1.Data
             builder.Entity<User>().HasKey(x => x.Id);
             builder.Entity<WishlistItem>().HasKey(x => x.Id);
             builder.Entity<Setting>().HasKey(x => x.Id);
+            builder.Entity<StoredFile>().HasKey(x => x.Id);   // <-- NEW
 
             builder.Entity<WishlistItem>()
                 .HasOne(w => w.User)

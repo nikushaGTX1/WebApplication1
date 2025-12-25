@@ -4,9 +4,9 @@ using Microsoft.EntityFrameworkCore;
 using WebApplication1.Data;
 using WebApplication1.DTOs;
 using WebApplication1.Models;
-using System.IO;
 using System;
 using System.Linq;
+using System.IO;
 using Microsoft.AspNetCore.Http;
 
 namespace WebApplication1.Controllers
@@ -22,6 +22,17 @@ namespace WebApplication1.Controllers
         {
             _context = context;
             _env = env;
+        }
+
+        // -------------------------------- FILE SERVICE --------------------------------
+        [HttpGet("file/{id}")]
+        public async Task<IActionResult> GetFile(Guid id)
+        {
+            var file = await _context.Files.FindAsync(id);
+            if (file == null)
+                return NotFound();
+
+            return File(file.Data, file.ContentType);
         }
 
 
@@ -61,7 +72,7 @@ namespace WebApplication1.Controllers
         }
 
 
-        // ------------ ADD PRODUCT + IMAGE UPLOAD -----------------
+        // ------------ ADD PRODUCT + IMAGE UPLOAD (DB STORAGE) -----------------
 
         [HttpPost("add-product")]
         [Consumes("multipart/form-data")]
@@ -72,22 +83,23 @@ namespace WebApplication1.Controllers
 
             string imageUrl = req.Image;
 
-            // Upload Image If Provided
             if (req.ImageFile != null && req.ImageFile.Length > 0)
             {
-                var root = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
-                Directory.CreateDirectory(root);
+                using var ms = new MemoryStream();
+                await req.ImageFile.CopyToAsync(ms);
 
-                var uploadPath = Path.Combine(root, "uploads");
-                Directory.CreateDirectory(uploadPath);
+                var stored = new StoredFile
+                {
+                    Id = Guid.NewGuid(),
+                    FileName = req.ImageFile.FileName,
+                    ContentType = req.ImageFile.ContentType,
+                    Data = ms.ToArray()
+                };
 
-                string fileName = $"product-{Guid.NewGuid()}{Path.GetExtension(req.ImageFile.FileName)}";
-                string fullPath = Path.Combine(uploadPath, fileName);
+                _context.Files.Add(stored);
+                await _context.SaveChangesAsync();
 
-                using var stream = new FileStream(fullPath, FileMode.Create);
-                await req.ImageFile.CopyToAsync(stream);
-
-                imageUrl = $"{Request.Scheme}://{Request.Host}/uploads/{fileName}";
+                imageUrl = $"{Request.Scheme}://{Request.Host}/api/Api/file/{stored.Id}";
             }
 
             var product = new Api
@@ -204,7 +216,7 @@ namespace WebApplication1.Controllers
 
 
 
-        // -------------------------------- BANNER --------------------------------
+        // -------------------------------- BANNER (DB STORAGE) --------------------------------
 
         [HttpPost("upload-banner")]
         [Consumes("multipart/form-data")]
@@ -213,19 +225,20 @@ namespace WebApplication1.Controllers
             if (file == null || file.Length == 0)
                 return BadRequest("No file uploaded");
 
-            var root = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
-            Directory.CreateDirectory(root);
+            using var ms = new MemoryStream();
+            await file.CopyToAsync(ms);
 
-            var uploadPath = Path.Combine(root, "uploads");
-            Directory.CreateDirectory(uploadPath);
+            var stored = new StoredFile
+            {
+                Id = Guid.NewGuid(),
+                FileName = file.FileName,
+                ContentType = file.ContentType,
+                Data = ms.ToArray()
+            };
 
-            string fileName = $"banner-{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
-            string fullPath = Path.Combine(uploadPath, fileName);
+            _context.Files.Add(stored);
 
-            using var stream = new FileStream(fullPath, FileMode.Create);
-            await file.CopyToAsync(stream);
-
-            string url = $"{Request.Scheme}://{Request.Host}/uploads/{fileName}";
+            var url = $"{Request.Scheme}://{Request.Host}/api/Api/file/{stored.Id}";
 
             var banner = await _context.Settings.FirstOrDefaultAsync(x => x.Key == "MainBanner");
             if (banner == null)
@@ -251,7 +264,7 @@ namespace WebApplication1.Controllers
 
 
 
-        // -------------------------------- GRID --------------------------------
+        // -------------------------------- GRID (DB STORAGE) --------------------------------
 
         [HttpGet("grid")]
         public async Task<IActionResult> GetGrid()
@@ -297,19 +310,20 @@ namespace WebApplication1.Controllers
             if (file == null || file.Length == 0)
                 return BadRequest("No file uploaded");
 
-            var root = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
-            Directory.CreateDirectory(root);
+            using var ms = new MemoryStream();
+            await file.CopyToAsync(ms);
 
-            var uploadPath = Path.Combine(root, "uploads");
-            Directory.CreateDirectory(uploadPath);
+            var stored = new StoredFile
+            {
+                Id = Guid.NewGuid(),
+                FileName = file.FileName,
+                ContentType = file.ContentType,
+                Data = ms.ToArray()
+            };
 
-            string fileName = $"grid-{slot}-{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
-            string fullPath = Path.Combine(uploadPath, fileName);
+            _context.Files.Add(stored);
 
-            using var stream = new FileStream(fullPath, FileMode.Create);
-            await file.CopyToAsync(stream);
-
-            string url = $"{Request.Scheme}://{Request.Host}/uploads/{fileName}";
+            var url = $"{Request.Scheme}://{Request.Host}/api/Api/file/{stored.Id}";
             var key = $"Grid{slot}";
 
             var setting = await _context.Settings.FirstOrDefaultAsync(x => x.Key == key);
