@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using WebApplication1.Data;
 
+
 var builder = WebApplication.CreateBuilder(args);
 
 // ------------------ SERVICES ------------------
@@ -23,9 +24,13 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 // ------------------ DATABASE CONFIG ------------------
+// 🔥 USE POSTGRES (NOT SQLITE)
 builder.Services.AddDbContext<DataContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"))
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
 );
+
+// 🔥 Required for PostgreSQL timestamp handling
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 var app = builder.Build();
 
@@ -44,7 +49,7 @@ using (var scope = app.Services.CreateScope())
 app.UseSwagger();
 app.UseSwaggerUI();
 
-// Serve static files (VERY IMPORTANT for uploads)
+// Serve static files (uploads)
 app.UseStaticFiles();
 
 app.UseCors("AllowAngularDev");
