@@ -182,12 +182,10 @@ namespace WebApplication1.Controllers
             if (string.IsNullOrEmpty(root))
                 root = Path.Combine(_env.ContentRootPath, "wwwroot");
 
-            if (!Directory.Exists(root))
-                Directory.CreateDirectory(root);
+            Directory.CreateDirectory(root);
 
             var uploadPath = Path.Combine(root, "uploads");
-            if (!Directory.Exists(uploadPath))
-                Directory.CreateDirectory(uploadPath);
+            Directory.CreateDirectory(uploadPath);
 
             string fileName = $"banner-{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
             string fullPath = Path.Combine(uploadPath, fileName);
@@ -219,28 +217,37 @@ namespace WebApplication1.Controllers
             return Ok(new { bannerUrl = banner?.Value });
         }
 
-        // ------------------ GRID (UNLIMITED + DELETE) ------------------
+        // ------------------ GRID (7 ONLY) ------------------
 
         [HttpGet("grid")]
         public async Task<IActionResult> GetGrid()
         {
             var grids = await _context.Settings
                 .Where(x => x.Key.StartsWith("Grid"))
-                .OrderBy(x => x.Key)
                 .ToListAsync();
 
-            var result = grids.ToDictionary(
-                x => x.Key.ToLower(),
-                x => x.Value
-            );
+            string Get(string key) =>
+                grids.FirstOrDefault(x => x.Key == key)?.Value ?? "";
 
-            return Ok(result);
+            return Ok(new
+            {
+                grid1 = Get("Grid1"),
+                grid2 = Get("Grid2"),
+                grid3 = Get("Grid3"),
+                grid4 = Get("Grid4"),
+                grid5 = Get("Grid5"),
+                grid6 = Get("Grid6"),
+                grid7 = Get("Grid7")
+            });
         }
 
         [HttpPost("upload-grid/{slot}")]
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> UploadGrid(int slot, IFormFile file)
         {
+            if (slot < 1 || slot > 7)
+                return BadRequest("Slot must be between 1 and 7");
+
             if (file == null || file.Length == 0)
                 return BadRequest("No file uploaded");
 
@@ -248,12 +255,10 @@ namespace WebApplication1.Controllers
             if (string.IsNullOrEmpty(root))
                 root = Path.Combine(_env.ContentRootPath, "wwwroot");
 
-            if (!Directory.Exists(root))
-                Directory.CreateDirectory(root);
+            Directory.CreateDirectory(root);
 
             var uploadPath = Path.Combine(root, "uploads");
-            if (!Directory.Exists(uploadPath))
-                Directory.CreateDirectory(uploadPath);
+            Directory.CreateDirectory(uploadPath);
 
             string fileName = $"grid-{slot}-{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
             string fullPath = Path.Combine(uploadPath, fileName);
