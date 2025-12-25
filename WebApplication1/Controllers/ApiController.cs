@@ -317,5 +317,51 @@ namespace WebApplication1.Controllers
 
             return Ok(new { slot, url });
         }
+
+        // ------------------ ABOUT TEXTS ------------------
+
+        [HttpGet("about-texts")]
+        public async Task<IActionResult> GetAboutTexts()
+        {
+            var items = await _context.Settings
+                .Where(x => x.Key.StartsWith("About_"))
+                .ToListAsync();
+
+            var dict = items.ToDictionary(x => x.Key, x => x.Value);
+
+            return Ok(dict);
+        }
+
+        [HttpPost("about-texts")]
+        public async Task<IActionResult> UpdateAboutTexts([FromBody] Dictionary<string, string> texts)
+        {
+            if (texts == null || texts.Count == 0)
+                return BadRequest("No texts provided");
+
+            foreach (var kv in texts)
+            {
+                var key = kv.Key;
+                var value = kv.Value ?? string.Empty;
+
+                var setting = await _context.Settings
+                    .FirstOrDefaultAsync(x => x.Key == key);
+
+                if (setting == null)
+                {
+                    _context.Settings.Add(new Setting
+                    {
+                        Key = key,
+                        Value = value
+                    });
+                }
+                else
+                {
+                    setting.Value = value;
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            return Ok(new { message = "About texts updated" });
+        }
     }
 }
