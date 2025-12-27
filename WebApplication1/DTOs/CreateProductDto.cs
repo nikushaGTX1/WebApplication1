@@ -1,13 +1,17 @@
-﻿namespace WebApplication1.DTOs
+﻿using Microsoft.AspNetCore.Http;
+
+namespace WebApplication1.DTOs
 {
     public class CreateProductDto
     {
-        public string Name { get; set; }
-        public string Description { get; set; }
-        public string Image { get; set; }
-        public double Price { get; set; }
-        public string Category { get; set; }
+        public string Name { get; set; } = string.Empty;
 
-        public IFormFile ImageFile { get; set; }
+        public string? Description { get; set; }   // optional
+        public string? Image { get; set; }         // optional
+
+        public double Price { get; set; }
+        public string Category { get; set; } = string.Empty;
+
+        public IFormFile? ImageFile { get; set; }  // optional upload
     }
 }
