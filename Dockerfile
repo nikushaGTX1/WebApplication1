@@ -1,27 +1,38 @@
-# Use the official .NET runtime as base
+# -------------------
+# Base runtime image
+# -------------------
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
 WORKDIR /app
 EXPOSE 80
 
-# Build stage
+# -------------------
+# Build image
+# -------------------
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# copy csproj and restore
-COPY ["WebApplication1/WebApplication1.csproj", "WebApplication1/"]
-RUN dotnet restore "WebApplication1/WebApplication1.csproj"
+# Copy csproj and restore dependencies
+COPY WebApplication1/WebApplication1.csproj ./WebApplication1/
+WORKDIR /src/WebApplication1
+RUN dotnet restore "WebApplication1.csproj"
 
-# copy everything
-COPY . .
-WORKDIR "/src/WebApplication1"
+# Copy everything else
+COPY WebApplication1/. ./
+# Build the project
 RUN dotnet build "WebApplication1.csproj" -c Release -o /app/build
 
-# publish
+# -------------------
+# Publish
+# -------------------
 FROM build AS publish
 RUN dotnet publish "WebApplication1.csproj" -c Release -o /app/publish
 
-# final runtime image
+# -------------------
+# Final runtime image
+# -------------------
 FROM base AS final
 WORKDIR /app
-COPY --from=publish /app/publish .
+COPY --from=publish /app/publish ./
+
+# Entry point
 ENTRYPOINT ["dotnet", "WebApplication1.dll"]
